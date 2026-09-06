@@ -477,6 +477,7 @@
   let totalForMode = state.focusMin * 60;
   let running = false;
   let intervalId = null;
+  let endTime = null; // epoch ms when the running timer should reach 0
 
   const timeDisplay = document.getElementById('timeDisplay');
   const timeLabel = document.getElementById('timeLabel');
@@ -513,8 +514,11 @@
   }
 
   function tick(){
-    remaining--;
+    if(endTime === null) return;
+    remaining = Math.round((endTime - Date.now()) / 1000);
     if(remaining <= 0){
+      remaining = 0;
+      updateRing();
       completeSession();
       return;
     }
@@ -562,6 +566,7 @@
     running = true;
     startBtn.textContent = 'Pausar';
     ringWrap.classList.add('pulse');
+    endTime = Date.now() + remaining * 1000;
     intervalId = setInterval(tick, 1000);
   }
   function pauseTimer(){
@@ -569,6 +574,7 @@
     startBtn.textContent = 'Iniciar';
     ringWrap.classList.remove('pulse');
     clearInterval(intervalId);
+    endTime = null;
   }
   function resetTimer(){
     pauseTimer();
@@ -576,6 +582,14 @@
     remaining = totalForMode;
     updateRing();
   }
+
+  // Cuando el navegador reduce la frecuencia del setInterval en segundo plano,
+  // esto recalcula el tiempo real apenas la pestaña vuelve a estar activa.
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible' && running){
+      tick();
+    }
+  });
 
   startBtn.addEventListener('click', ()=>{
     running ? pauseTimer() : startTimer();
